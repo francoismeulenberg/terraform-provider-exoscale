@@ -18,9 +18,11 @@ import (
 var dsGroupName = acctest.RandomWithPrefix(testutils.Prefix)
 
 func testDataSource(t *testing.T) {
+	t.Parallel()
+
 	resource.Test(t, resource.TestCase{
-		PreCheck:          func() { testutils.AccPreCheck(t) },
-		ProviderFactories: testutils.Providers(),
+		PreCheck:                 func() { testutils.AccPreCheck(t) },
+		ProtoV6ProviderFactories: testutils.TestAccProtoV6ProviderFactories,
 		Steps: []resource.TestStep{
 			{
 				Config:      `data "exoscale_anti_affinity_group" "test" {}`,

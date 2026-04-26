@@ -2,6 +2,7 @@ package database
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -192,6 +193,26 @@ func (data *PGUserResourceModel) CreateResource(ctx context.Context, client *v3.
 }
 
 func (data *PGUserResourceModel) DeleteResource(ctx context.Context, client *v3.Client, diagnostics *diag.Diagnostics) {
+	blockingPools, err := getPGConnectionPoolsUsingUsername(ctx, client, data.Service.ValueString(), data.Username.ValueString())
+	if err != nil {
+		diagnostics.AddError(
+			"Client Error",
+			fmt.Sprintf("unable to check connection pool references for service user %q: %s", data.Username.ValueString(), err.Error()),
+		)
+		return
+	}
+
+	if len(blockingPools) > 0 {
+		diagnostics.AddError(
+			"Client Error",
+			fmt.Sprintf(
+				"service user %q is referenced by connection pool(s) %s; delete or update the connection pool(s) first",
+				data.Username.ValueString(),
+				formatPGConnectionPoolReferences(blockingPools),
+			),
+		)
+		return
+	}
 
 	op, err := client.DeleteDBAASPostgresUser(ctx, data.Service.ValueString(), data.Username.ValueString())
 	if err != nil {
@@ -213,15 +234,17 @@ func (data *PGUserResourceModel) DeleteResource(ctx context.Context, client *v3.
 
 }
 
-func (data *PGUserResourceModel) ReadResource(ctx context.Context, client *v3.Client, diagnostics *diag.Diagnostics) {
+func (data *PGUserResourceModel) ReadResource(ctx context.Context, client *v3.Client, diagnostics *diag.Diagnostics) (clearState bool) {
 
 	svc, err := waitForDBAASServiceReadyForFn(ctx, client.GetDBAASServicePG, data.Service.ValueString(), func(t *v3.DBAASServicePG) bool {
 		return t.State == v3.EnumServiceStateRunning && len(t.Users) > 0
 	})
-
 	if err != nil {
+		if errors.Is(err, v3.ErrNotFound) {
+			return true
+		}
 		diagnostics.AddError("Client Error", fmt.Sprintf("Unable to read service pg user, got error: %s", err))
-		return
+		return false
 	}
 
 	for _, user := range svc.Users {
@@ -234,15 +257,16 @@ func (data *PGUserResourceModel) ReadResource(ctx context.Context, client *v3.Cl
 			pass, err := client.RevealDBAASPostgresUserPassword(ctx, data.Service.ValueString(), data.Username.ValueString())
 			if err != nil {
 				diagnostics.AddError("Client Error", fmt.Sprintf("Unable to reveal pg user password, got error: %s", err))
-				return
+				return false
 			}
 
 			data.Password = basetypes.NewStringValue(pass.Password)
 
-			return
+			return false
 		}
 	}
-	diagnostics.AddError("Client Error", "Unable to read user for the service")
+
+	return true
 }
 
 func (data *PGUserResourceModel) UpdateResource(ctx context.Context, client *v3.Client, diagnostics *diag.Diagnostics) {

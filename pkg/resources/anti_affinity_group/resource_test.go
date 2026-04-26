@@ -31,15 +31,17 @@ resource "exoscale_anti_affinity_group" "test" {
 )
 
 func testResource(t *testing.T) {
+	t.Parallel()
+
 	var (
 		r   = aagroup.Name + ".test"
 		res egoscale.AntiAffinityGroup
 	)
 
 	resource.Test(t, resource.TestCase{
-		PreCheck:          func() { testutils.AccPreCheck(t) },
-		ProviderFactories: testutils.Providers(),
-		CheckDestroy:      testutils.CheckAntiAffinityGroupDestroy(&res),
+		PreCheck:                 func() { testutils.AccPreCheck(t) },
+		ProtoV6ProviderFactories: testutils.TestAccProtoV6ProviderFactories,
+		CheckDestroy:             testutils.CheckAntiAffinityGroupDestroy(&res),
 		Steps: []resource.TestStep{
 			{
 				// Create

@@ -2,6 +2,7 @@ package database
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -188,19 +189,23 @@ func (p *PGDatabaseResource) Update(ctx context.Context, req resource.UpdateRequ
 }
 
 // ReadResource reads resource from remote and populate the model accordingly
-func (data PGDatabaseResourceModel) ReadResource(ctx context.Context, client *v3.Client, diagnostics *diag.Diagnostics) {
+func (data PGDatabaseResourceModel) ReadResource(ctx context.Context, client *v3.Client, diagnostics *diag.Diagnostics) (clearState bool) {
 	svc, err := waitForDBAASServiceReadyForFn(ctx, client.GetDBAASServicePG, data.Service.ValueString(), func(t *v3.DBAASServicePG) bool { return t.State == v3.EnumServiceStateRunning })
 	if err != nil {
+		if errors.Is(err, v3.ErrNotFound) {
+			return true
+		}
 		diagnostics.AddError("Client Error", fmt.Sprintf("Unable to read service pg, got error: %s", err))
-		return
+		return false
 	}
 
 	for _, db := range svc.Databases {
 		if string(db) == data.DatabaseName.ValueString() {
-			return
+			return false
 		}
 	}
-	diagnostics.AddError("Client Error", "Unable to find database for the service")
+
+	return true
 }
 
 // CreateResource creates the resource according to the model, and then
@@ -251,6 +256,26 @@ func (data PGDatabaseResourceModel) CreateResource(ctx context.Context, client *
 
 // DeleteResource deletes the resource
 func (data PGDatabaseResourceModel) DeleteResource(ctx context.Context, client *v3.Client, diagnostics *diag.Diagnostics) {
+	blockingPools, err := getPGConnectionPoolsUsingDatabase(ctx, client, data.Service.ValueString(), data.DatabaseName.ValueString())
+	if err != nil {
+		diagnostics.AddError(
+			"Client Error",
+			fmt.Sprintf("unable to check connection pool references for service database %q: %s", data.DatabaseName.ValueString(), err.Error()),
+		)
+		return
+	}
+
+	if len(blockingPools) > 0 {
+		diagnostics.AddError(
+			"Client Error",
+			fmt.Sprintf(
+				"service database %q is referenced by connection pool(s) %s; delete or update the connection pool(s) first",
+				data.DatabaseName.ValueString(),
+				formatPGConnectionPoolReferences(blockingPools),
+			),
+		)
+		return
+	}
 
 	op, err := client.DeleteDBAASPGDatabase(ctx, data.Service.ValueString(), data.DatabaseName.ValueString())
 	if err != nil {

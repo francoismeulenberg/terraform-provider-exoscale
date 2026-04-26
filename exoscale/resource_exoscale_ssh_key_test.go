@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
 	"regexp"
 	"testing"
 
@@ -37,15 +38,17 @@ resource "exoscale_ssh_key" "test" {
 )
 
 func TestAccResourceSSHKey(t *testing.T) {
+	t.Parallel()
+
 	var (
 		r      = "exoscale_ssh_key.test"
 		sshKey egoscale.SSHKey
 	)
 
 	resource.Test(t, resource.TestCase{
-		PreCheck:          func() { testAccPreCheck(t) },
-		ProviderFactories: testAccProviders,
-		CheckDestroy:      testAccCheckResourceSSHKeyDestroy(&sshKey),
+		PreCheck:                 func() { testAccPreCheck(t) },
+		ProtoV6ProviderFactories: TestAccProtoV6ProviderFactories,
+		CheckDestroy:             testAccCheckResourceSSHKeyDestroy(&sshKey),
 		Steps: []resource.TestStep{
 			{
 				// Create (missing public_key)
@@ -100,7 +103,13 @@ func testAccCheckResourceSSHKeyExists(r string, sshKey *egoscale.SSHKey) resourc
 			return errors.New("resource ID not set")
 		}
 
-		client := getClient(testAccProvider.Meta())
+		client, err := egoscale.NewClient(
+			os.Getenv("EXOSCALE_API_KEY"),
+			os.Getenv("EXOSCALE_API_SECRET"),
+		)
+		if err != nil {
+			return err
+		}
 
 		ctx := exoapi.WithEndpoint(context.Background(), exoapi.NewReqEndpoint(testEnvironment, testZoneName))
 		res, err := client.GetSSHKey(ctx, testZoneName, rs.Primary.ID)
@@ -115,10 +124,16 @@ func testAccCheckResourceSSHKeyExists(r string, sshKey *egoscale.SSHKey) resourc
 
 func testAccCheckResourceSSHKeyDestroy(sshKey *egoscale.SSHKey) resource.TestCheckFunc {
 	return func(_ *terraform.State) error {
-		client := getClient(testAccProvider.Meta())
+		client, err := egoscale.NewClient(
+			os.Getenv("EXOSCALE_API_KEY"),
+			os.Getenv("EXOSCALE_API_SECRET"),
+		)
+		if err != nil {
+			return err
+		}
 		ctx := exoapi.WithEndpoint(context.Background(), exoapi.NewReqEndpoint(testEnvironment, testZoneName))
 
-		_, err := client.GetSSHKey(ctx, testZoneName, *sshKey.Name)
+		_, err = client.GetSSHKey(ctx, testZoneName, *sshKey.Name)
 		if err != nil {
 			if errors.Is(err, exoapi.ErrNotFound) {
 				return nil

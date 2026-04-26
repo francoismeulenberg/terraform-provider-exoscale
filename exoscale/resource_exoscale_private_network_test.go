@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"os"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/acctest"
@@ -76,15 +77,17 @@ resource "exoscale_private_network" "test" {
 )
 
 func TestAccResourcePrivateNetwork(t *testing.T) {
+	t.Parallel()
+
 	var (
 		r              = "exoscale_private_network.test"
 		privateNetwork egoscale.PrivateNetwork
 	)
 
 	resource.Test(t, resource.TestCase{
-		PreCheck:          func() { testAccPreCheck(t) },
-		ProviderFactories: testAccProviders,
-		CheckDestroy:      testAccCheckResourcePrivateNetworkDestroy(&privateNetwork),
+		PreCheck:                 func() { testAccPreCheck(t) },
+		ProtoV6ProviderFactories: TestAccProtoV6ProviderFactories,
+		CheckDestroy:             testAccCheckResourcePrivateNetworkDestroy(&privateNetwork),
 		Steps: []resource.TestStep{
 			{
 				// Create
@@ -178,7 +181,13 @@ func testAccCheckResourcePrivateNetworkExists(r string, privateNetwork *egoscale
 			return errors.New("resource ID not set")
 		}
 
-		client := getClient(testAccProvider.Meta())
+		client, err := egoscale.NewClient(
+			os.Getenv("EXOSCALE_API_KEY"),
+			os.Getenv("EXOSCALE_API_SECRET"),
+		)
+		if err != nil {
+			return err
+		}
 
 		ctx := exoapi.WithEndpoint(context.Background(), exoapi.NewReqEndpoint(testEnvironment, testZoneName))
 		res, err := client.GetPrivateNetwork(ctx, testZoneName, rs.Primary.ID)
@@ -193,10 +202,16 @@ func testAccCheckResourcePrivateNetworkExists(r string, privateNetwork *egoscale
 
 func testAccCheckResourcePrivateNetworkDestroy(privateNetwork *egoscale.PrivateNetwork) resource.TestCheckFunc {
 	return func(_ *terraform.State) error {
-		client := getClient(testAccProvider.Meta())
+		client, err := egoscale.NewClient(
+			os.Getenv("EXOSCALE_API_KEY"),
+			os.Getenv("EXOSCALE_API_SECRET"),
+		)
+		if err != nil {
+			return err
+		}
 		ctx := exoapi.WithEndpoint(context.Background(), exoapi.NewReqEndpoint(testEnvironment, testZoneName))
 
-		_, err := client.GetPrivateNetwork(ctx, testZoneName, *privateNetwork.ID)
+		_, err = client.GetPrivateNetwork(ctx, testZoneName, *privateNetwork.ID)
 		if err != nil {
 			if errors.Is(err, exoapi.ErrNotFound) {
 				return nil

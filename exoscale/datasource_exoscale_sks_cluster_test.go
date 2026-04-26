@@ -128,6 +128,8 @@ resource "exoscale_sks_nodepool" "my_sks_nodepool_2" {
 )
 
 func TestAccSKSDataSources(t *testing.T) {
+	t.Parallel()
+
 	type testCase struct {
 		Config               string
 		DataSourceIdentifier string
@@ -236,8 +238,8 @@ func TestAccSKSDataSources(t *testing.T) {
 	}...)
 
 	resTC := resource.TestCase{
-		PreCheck:          func() { testAccPreCheck(t) },
-		ProviderFactories: testAccProviders,
+		PreCheck:                 func() { testAccPreCheck(t) },
+		ProtoV6ProviderFactories: TestAccProtoV6ProviderFactories,
 		Steps: []resource.TestStep{
 			{
 				Config: testAccSKSDataSourcesConfig,

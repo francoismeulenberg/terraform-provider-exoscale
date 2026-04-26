@@ -31,9 +31,11 @@ data "exoscale_template" "test" {
 )
 
 func TestAccDataSourceTemplate(t *testing.T) {
+	t.Parallel()
+
 	resource.Test(t, resource.TestCase{
-		PreCheck:          func() { testAccPreCheck(t) },
-		ProviderFactories: testAccProviders,
+		PreCheck:                 func() { testAccPreCheck(t) },
+		ProtoV6ProviderFactories: TestAccProtoV6ProviderFactories,
 		Steps: []resource.TestStep{
 			{
 				Config:      ` data "exoscale_template" "test" { zone = "lolnope" }`,

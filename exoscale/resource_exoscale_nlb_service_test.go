@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
@@ -201,6 +202,8 @@ resource "exoscale_nlb_service" "test" {
 )
 
 func TestAccResourceNLBService(t *testing.T) {
+	t.Parallel()
+
 	var (
 		r          = "exoscale_nlb_service.test"
 		nlb        egoscale.NetworkLoadBalancer
@@ -208,9 +211,9 @@ func TestAccResourceNLBService(t *testing.T) {
 	)
 
 	resource.Test(t, resource.TestCase{
-		PreCheck:          func() { testAccPreCheck(t) },
-		ProviderFactories: testAccProviders,
-		CheckDestroy:      testAccCheckResourceNLBServiceDestroy(r),
+		PreCheck:                 func() { testAccPreCheck(t) },
+		ProtoV6ProviderFactories: TestAccProtoV6ProviderFactories,
+		CheckDestroy:             testAccCheckResourceNLBServiceDestroy(r),
 		Steps: []resource.TestStep{
 			{
 				// Create
@@ -367,7 +370,13 @@ func testAccCheckResourceNLBServiceExists(r string, nlbService *egoscale.Network
 			return fmt.Errorf("resource attribute %q not set", resNLBServiceAttrNLBID)
 		}
 
-		client := getClient(testAccProvider.Meta())
+		client, err := egoscale.NewClient(
+			os.Getenv("EXOSCALE_API_KEY"),
+			os.Getenv("EXOSCALE_API_SECRET"),
+		)
+		if err != nil {
+			return err
+		}
 		ctx := exoapi.WithEndpoint(
 			context.Background(),
 			exoapi.NewReqEndpoint(testEnvironment, testZoneName),
@@ -405,7 +414,13 @@ func testAccCheckResourceNLBServiceDestroy(r string) resource.TestCheckFunc {
 			return fmt.Errorf("resource attribute %q not set", resNLBServiceAttrNLBID)
 		}
 
-		client := getClient(testAccProvider.Meta())
+		client, err := egoscale.NewClient(
+			os.Getenv("EXOSCALE_API_KEY"),
+			os.Getenv("EXOSCALE_API_SECRET"),
+		)
+		if err != nil {
+			return err
+		}
 		ctx := exoapi.WithEndpoint(
 			context.Background(),
 			exoapi.NewReqEndpoint(testEnvironment, testZoneName),

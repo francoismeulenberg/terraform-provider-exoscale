@@ -494,6 +494,8 @@ resource "exoscale_compute_instance" "test" {
 )
 
 func testResource(t *testing.T) {
+	t.Parallel()
+
 	var (
 		r                     = "exoscale_compute_instance.test"
 		testInstance          v3.Instance
@@ -506,9 +508,9 @@ func testResource(t *testing.T) {
 	)
 
 	resource.Test(t, resource.TestCase{
-		PreCheck:          func() { testutils.AccPreCheck(t) },
-		ProviderFactories: testutils.Providers(),
-		CheckDestroy:      testutils.CheckInstanceDestroyV3(&testInstance),
+		PreCheck:                 func() { testutils.AccPreCheck(t) },
+		ProtoV6ProviderFactories: testutils.TestAccProtoV6ProviderFactories,
+		CheckDestroy:             testutils.CheckInstanceDestroyV3(&testInstance),
 		Steps: []resource.TestStep{
 			{
 				// Create stopped testInstance
@@ -804,9 +806,9 @@ func testResource(t *testing.T) {
 	testPrivateNetwork = v3.PrivateNetwork{}
 
 	resource.Test(t, resource.TestCase{
-		PreCheck:          func() { testutils.AccPreCheck(t) },
-		ProviderFactories: testutils.Providers(),
-		CheckDestroy:      testutils.CheckInstanceDestroyV3(&testInstance),
+		PreCheck:                 func() { testutils.AccPreCheck(t) },
+		ProtoV6ProviderFactories: testutils.TestAccProtoV6ProviderFactories,
+		CheckDestroy:             testutils.CheckInstanceDestroyV3(&testInstance),
 		Steps: []resource.TestStep{
 			{
 				Config: rConfigCreateManaged,
@@ -846,9 +848,9 @@ func testResource(t *testing.T) {
 	testSSHKey2 = v3.SSHKey{}
 
 	resource.Test(t, resource.TestCase{
-		PreCheck:          func() { testutils.AccPreCheck(t) },
-		ProviderFactories: testutils.Providers(),
-		CheckDestroy:      testutils.CheckInstanceDestroyV3(&testInstance),
+		PreCheck:                 func() { testutils.AccPreCheck(t) },
+		ProtoV6ProviderFactories: testutils.TestAccProtoV6ProviderFactories,
+		CheckDestroy:             testutils.CheckInstanceDestroyV3(&testInstance),
 		Steps: []resource.TestStep{
 			{
 				Config: rConfigCreateMultipleSSHKeys,

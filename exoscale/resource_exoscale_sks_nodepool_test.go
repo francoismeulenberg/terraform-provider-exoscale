@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
 	"testing"
 	"time"
 
@@ -19,6 +20,7 @@ import (
 )
 
 var (
+	testAccResourceSKSClusterNameNodePoolTest                   = acctest.RandomWithPrefix(testPrefix)
 	testAccResourceSKSNodepoolAntiAffinityGroupName             = acctest.RandomWithPrefix(testPrefix)
 	testAccResourceSKSNodepoolDescription                       = acctest.RandomWithPrefix(testPrefix)
 	testAccResourceSKSNodepoolDescriptionUpdated                = testAccResourceSKSNodepoolDescription + "-updated"
@@ -83,7 +85,7 @@ resource "exoscale_sks_nodepool" "test" {
 }
 `,
 		testAccResourceSKSClusterLocalZone,
-		testAccResourceSKSClusterName,
+		testAccResourceSKSClusterNameNodePoolTest,
 		testAccResourceSKSNodepoolName,
 		testAccResourceSKSNodepoolDescription,
 		testAccResourceSKSNodepoolInstanceType,
@@ -160,7 +162,7 @@ resource "exoscale_sks_nodepool" "test" {
 		testAccResourceSKSClusterLocalZone,
 		testAccResourceSKSNodepoolAntiAffinityGroupName,
 		testAccResourceSKSNodepoolPrivateNetworkName,
-		testAccResourceSKSClusterName,
+		testAccResourceSKSClusterNameNodePoolTest,
 		testAccResourceSKSNodepoolNameUpdated,
 		testAccResourceSKSNodepoolDescriptionUpdated,
 		testAccResourceSKSNodepoolInstanceTypeUpdated,
@@ -179,6 +181,8 @@ resource "exoscale_sks_nodepool" "test" {
 )
 
 func TestAccResourceSKSNodepool(t *testing.T) {
+	t.Parallel()
+
 	var (
 		r           = "exoscale_sks_nodepool.test"
 		sksCluster  v3.SKSCluster
@@ -186,9 +190,9 @@ func TestAccResourceSKSNodepool(t *testing.T) {
 	)
 
 	resource.Test(t, resource.TestCase{
-		PreCheck:          func() { testAccPreCheck(t) },
-		ProviderFactories: testAccProviders,
-		CheckDestroy:      testAccCheckResourceSKSNodepoolDestroy(r),
+		PreCheck:                 func() { testAccPreCheck(t) },
+		ProtoV6ProviderFactories: TestAccProtoV6ProviderFactories,
+		CheckDestroy:             testAccCheckResourceSKSNodepoolDestroy(r),
 		Steps: []resource.TestStep{
 			{
 				// Create
@@ -375,7 +379,13 @@ func testAccCheckResourceSKSNodepoolExists(r string, sksNodepool *egoscale.SKSNo
 			return fmt.Errorf("resource attribute %q not set", resSKSNodepoolAttrClusterID)
 		}
 
-		client := getClient(testAccProvider.Meta())
+		client, err := egoscale.NewClient(
+			os.Getenv("EXOSCALE_API_KEY"),
+			os.Getenv("EXOSCALE_API_SECRET"),
+		)
+		if err != nil {
+			return err
+		}
 		ctx := exoapi.WithEndpoint(
 			context.Background(),
 			exoapi.NewReqEndpoint(testEnvironment, testAccResourceSKSClusterLocalZone),
@@ -431,7 +441,13 @@ func testAccCheckResourceSKSNodepoolDestroy(r string) resource.TestCheckFunc {
 			return fmt.Errorf("resource attribute %q not set", resSKSNodepoolAttrClusterID)
 		}
 
-		client := getClient(testAccProvider.Meta())
+		client, err := egoscale.NewClient(
+			os.Getenv("EXOSCALE_API_KEY"),
+			os.Getenv("EXOSCALE_API_SECRET"),
+		)
+		if err != nil {
+			return err
+		}
 		ctx := exoapi.WithEndpoint(
 			context.Background(),
 			exoapi.NewReqEndpoint(testEnvironment, testAccResourceSKSClusterLocalZone),

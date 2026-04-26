@@ -212,15 +212,17 @@ resource "exoscale_instance_pool" "test_private" {
 )
 
 func testResource(t *testing.T) {
+	t.Parallel()
+
 	var (
 		r            = "exoscale_instance_pool.test"
 		instancePool v3.InstancePool
 	)
 
 	resource.Test(t, resource.TestCase{
-		PreCheck:          func() { testutils.AccPreCheck(t) },
-		ProviderFactories: testutils.Providers(),
-		CheckDestroy:      testutils.CheckInstancePoolDestroy(&instancePool),
+		PreCheck:                 func() { testutils.AccPreCheck(t) },
+		ProtoV6ProviderFactories: testutils.TestAccProtoV6ProviderFactories,
+		CheckDestroy:             testutils.CheckInstancePoolDestroy(&instancePool),
 		Steps: []resource.TestStep{
 			{
 				// Create
